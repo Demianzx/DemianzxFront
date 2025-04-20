@@ -13,9 +13,10 @@ const Header: React.FC = () => {
   const location = useLocation();
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   return (
-    <header className="flex justify-between items-center py-5 px-6 md:px-10 bg-black text-white">
+    <header className="relative flex justify-between items-center py-5 px-6 md:px-10 bg-black text-white">
       <div className="text-2xl font-bold">
         <Link to="/" className="flex items-center">
           <span className="text-white">DEMIANZX</span>
@@ -23,7 +24,25 @@ const Header: React.FC = () => {
         </Link>
       </div>
       
-      <div className="flex items-center space-x-6">
+      {/* Mobile menu button */}
+      <button 
+        className="md:hidden text-gray-300 hover:text-white"
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        aria-label="Menu"
+      >
+        {!mobileMenuOpen ? (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        )}
+      </button>
+      
+      {/* Desktop menu */}
+      <div className="hidden md:flex items-center space-x-6">
         <nav className={`${searchExpanded ? 'hidden md:block' : 'block'}`}>
           <ul className="flex space-x-8">
             <li><Link to="/" className={`hover:text-purple-400 transition-colors ${location.pathname === '/' ? 'text-purple-400' : ''}`}>Home</Link></li>
@@ -72,7 +91,7 @@ const Header: React.FC = () => {
                 alt="User Avatar" 
                 className="w-8 h-8 rounded-full"
               />
-              <span>John Doe</span>
+              <span className="hidden sm:inline">John Doe</span>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
@@ -95,6 +114,125 @@ const Header: React.FC = () => {
           </button>
         )}
       </div>
+      
+      {/* Mobile menu (full screen) */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-50 bg-black bg-opacity-95 flex flex-col p-5">
+          <div className="flex justify-between items-center mb-8">
+            <div className="text-2xl font-bold">
+              <span className="text-white">DEMIANZX</span>
+              <span className="text-purple-500"> GAMES</span>
+            </div>
+            <button 
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-gray-300 hover:text-white"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="relative flex items-center mb-6">
+            <input 
+              type="text"
+              placeholder="Search..."
+              className="bg-gray-800 rounded-full py-3 px-4 w-full focus:outline-none focus:ring-2 focus:ring-purple-600"
+            />
+            <button className="absolute right-3 text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+          </div>
+          
+          <nav className="flex-grow">
+            <ul className="space-y-6 text-xl">
+              <li>
+                <Link 
+                  to="/" 
+                  className={`block hover:text-purple-400 transition-colors ${location.pathname === '/' ? 'text-purple-400' : ''}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Home
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="/articles" 
+                  className={`block hover:text-purple-400 transition-colors ${location.pathname.includes('/articles') ? 'text-purple-400' : ''}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Articles
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="/reviews" 
+                  className={`block hover:text-purple-400 transition-colors ${location.pathname.includes('/reviews') ? 'text-purple-400' : ''}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Reviews
+                </Link>
+              </li>
+              {fakeAuth.isAdmin && (
+                <li>
+                  <Link 
+                    to="/admin" 
+                    className="block hover:text-purple-400 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Admin Dashboard
+                  </Link>
+                </li>
+              )}
+            </ul>
+          </nav>
+          
+          <div className="mt-auto pt-6 border-t border-gray-800">
+            {fakeAuth.isAuthenticated ? (
+              <div className="flex items-center space-x-4">
+                <img 
+                  src="https://picsum.photos/100/100?random=10" 
+                  alt="User Avatar" 
+                  className="w-10 h-10 rounded-full"
+                />
+                <div>
+                  <p className="font-medium">John Doe</p>
+                  <div className="flex space-x-4 mt-2">
+                    <Link 
+                      to="/profile" 
+                      className="text-sm text-gray-400 hover:text-white"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Profile
+                    </Link>
+                    <button 
+                      className="text-sm text-gray-400 hover:text-white"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        // Acción de logout aquí
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <button
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-md transition-colors"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setIsAuthModalOpen(true);
+                }}
+              >
+                Login
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       
       {/* Auth Modal */}
       <AuthModal 
