@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import LoginForm from './LoginForm';
 import RegisterForm from './RegisterForm';
+import { useAppSelector } from '../../store/hooks';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -10,6 +11,14 @@ interface AuthModalProps {
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const modalRef = useRef<HTMLDivElement>(null);
+  const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
+  
+  // Cerrar el modal si el usuario se autentica correctamente
+  useEffect(() => {
+    if (isAuthenticated && isOpen) {
+      onClose();
+    }
+  }, [isAuthenticated, isOpen, onClose]);
   
   // Cerrar el modal al hacer clic fuera de él
   useEffect(() => {

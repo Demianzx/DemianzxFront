@@ -1,24 +1,56 @@
 import React, { useState } from 'react';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { register, clearAuthError, login } from '../../store/slices/authSlice';
 
 interface RegisterFormProps {
   onClose: () => void;
 }
 
 const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
+  const dispatch = useAppDispatch();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const { isLoading, error } = useAppSelector(state => state.auth);
+  
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Aquí iría la lógica para registrar al usuario
-    console.log('Register with:', { email, password });
-    // Para simular un registro exitoso:
-    // onClose();
+    
+    // Limpiar errores previos
+    setFormError(null);
+    dispatch(clearAuthError());
+    
+    // Validar que las contraseñas coincidan
+    if (password !== confirmPassword) {
+      setFormError("Passwords don't match");
+      return;
+    }
+    
+    // Intentar registrar al usuario
+    const registerResult = await dispatch(register({ email, password }));
+    
+    if (register.fulfilled.match(registerResult)) {
+      // Si el registro fue exitoso, iniciar sesión automáticamente
+      const loginResult = await dispatch(login({ email, password }));
+      
+      if (login.fulfilled.match(loginResult)) {
+        // Cerrar el modal si la autenticación fue exitosa
+        onClose();
+      }
+    }
   };
   
   return (
     <div>
       <h2 className="text-3xl font-bold text-center mb-6">Register</h2>
+      
+      {(error || formError) && (
+        <div className="bg-red-900 text-red-200 p-3 rounded-md mb-4">
+          {formError || error}
+        </div>
+      )}
       
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
@@ -32,10 +64,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
             onChange={(e) => setEmail(e.target.value)}
             className="w-full bg-gray-800 border border-gray-700 rounded-md py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-600"
             required
+            disabled={isLoading}
           />
         </div>
         
-        <div className="mb-6">
+        <div className="mb-4">
           <label htmlFor="register-password" className="block text-gray-400 mb-2">
             Password
           </label>
@@ -46,14 +79,31 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
             onChange={(e) => setPassword(e.target.value)}
             className="w-full bg-gray-800 border border-gray-700 rounded-md py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-600"
             required
+            disabled={isLoading}
+          />
+        </div>
+        
+        <div className="mb-6">
+          <label htmlFor="register-confirm-password" className="block text-gray-400 mb-2">
+            Confirm Password
+          </label>
+          <input
+            id="register-confirm-password"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="w-full bg-gray-800 border border-gray-700 rounded-md py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-600"
+            required
+            disabled={isLoading}
           />
         </div>
         
         <button
           type="submit"
           className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-md transition-colors font-medium"
+          disabled={isLoading}
         >
-          Sign up
+          {isLoading ? 'Signing up...' : 'Sign up'}
         </button>
       </form>
       

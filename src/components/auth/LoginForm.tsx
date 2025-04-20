@@ -1,24 +1,42 @@
 import React, { useState } from 'react';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { login, clearAuthError } from '../../store/slices/authSlice';
 
 interface LoginFormProps {
   onClose: () => void;
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onClose }) => {
+  const dispatch = useAppDispatch();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const { isLoading, error } = useAppSelector(state => state.auth);
+  
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Aquí iría la lógica para autenticar al usuario
-    console.log('Login with:', { email, password });
-    // Para simular una autenticación exitosa:
-    // onClose();
+    
+    // Limpiar cualquier error previo
+    dispatch(clearAuthError());
+    
+    // Intentar iniciar sesión
+    const result = await dispatch(login({ email, password }));
+    
+    if (login.fulfilled.match(result)) {
+      // Cerrar el modal si la autenticación fue exitosa
+      onClose();
+    }
   };
   
   return (
     <div>
       <h2 className="text-3xl font-bold text-center mb-6">Login</h2>
+      
+      {error && (
+        <div className="bg-red-900 text-red-200 p-3 rounded-md mb-4">
+          {error}
+        </div>
+      )}
       
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
@@ -32,6 +50,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onClose }) => {
             onChange={(e) => setEmail(e.target.value)}
             className="w-full bg-gray-800 border border-gray-700 rounded-md py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-600"
             required
+            disabled={isLoading}
           />
         </div>
         
@@ -46,14 +65,16 @@ const LoginForm: React.FC<LoginFormProps> = ({ onClose }) => {
             onChange={(e) => setPassword(e.target.value)}
             className="w-full bg-gray-800 border border-gray-700 rounded-md py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-600"
             required
+            disabled={isLoading}
           />
         </div>
         
         <button
           type="submit"
           className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-md transition-colors font-medium"
+          disabled={isLoading}
         >
-          Log in
+          {isLoading ? 'Logging in...' : 'Log in'}
         </button>
       </form>
       

@@ -1,19 +1,28 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { logout } from '../../store/slices/authSlice';
 import AuthModal from '../auth/AuthModal';
-
-// En una implementación real, esto usaría un contexto de autenticación
-// Para este ejemplo, simulamos un usuario autenticado
-const fakeAuth = {
-  isAuthenticated: true,
-  isAdmin: true
-};
 
 const Header: React.FC = () => {
   const location = useLocation();
+  const dispatch = useAppDispatch();
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Obtener el estado de autenticación y usuario de Redux
+  const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
+  const user = useAppSelector(state => state.auth.user);
+  const isAdmin = user?.role === 'Admin';
+  
+  const handleLogout = () => {
+    dispatch(logout());
+    // Cerrar el menú móvil si está abierto
+    if (mobileMenuOpen) {
+      setMobileMenuOpen(false);
+    }
+  };
   
   return (
     <header className="relative flex justify-between items-center py-5 px-6 md:px-10 bg-black text-white">
@@ -48,7 +57,7 @@ const Header: React.FC = () => {
             <li><Link to="/" className={`hover:text-purple-400 transition-colors ${location.pathname === '/' ? 'text-purple-400' : ''}`}>Home</Link></li>
             <li><Link to="/articles" className={`hover:text-purple-400 transition-colors ${location.pathname.includes('/articles') ? 'text-purple-400' : ''}`}>Articles</Link></li>
             <li><Link to="/reviews" className={`hover:text-purple-400 transition-colors ${location.pathname.includes('/reviews') ? 'text-purple-400' : ''}`}>Reviews</Link></li>
-            {fakeAuth.isAdmin && (
+            {isAdmin && (
               <li><Link to="/admin" className="hover:text-purple-400 transition-colors">Admin</Link></li>
             )}
           </ul>
@@ -83,7 +92,7 @@ const Header: React.FC = () => {
           </button>
         )}
         
-        {fakeAuth.isAuthenticated ? (
+        {isAuthenticated ? (
           <div className="relative group">
             <button className="flex items-center space-x-2">
               <img 
@@ -91,7 +100,7 @@ const Header: React.FC = () => {
                 alt="User Avatar" 
                 className="w-8 h-8 rounded-full"
               />
-              <span className="hidden sm:inline">John Doe</span>
+              <span className="hidden sm:inline">{user?.name || user?.email || 'User'}</span>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
@@ -99,10 +108,15 @@ const Header: React.FC = () => {
             
             <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
               <Link to="/profile" className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Profile</Link>
-              {fakeAuth.isAdmin && (
+              {isAdmin && (
                 <Link to="/admin" className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Admin Dashboard</Link>
               )}
-              <Link to="/" className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Logout</Link>
+              <button 
+                onClick={handleLogout}
+                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+              >
+                Logout
+              </button>
             </div>
           </div>
         ) : (
@@ -175,7 +189,7 @@ const Header: React.FC = () => {
                   Reviews
                 </Link>
               </li>
-              {fakeAuth.isAdmin && (
+              {isAdmin && (
                 <li>
                   <Link 
                     to="/admin" 
@@ -190,7 +204,7 @@ const Header: React.FC = () => {
           </nav>
           
           <div className="mt-auto pt-6 border-t border-gray-800">
-            {fakeAuth.isAuthenticated ? (
+            {isAuthenticated ? (
               <div className="flex items-center space-x-4">
                 <img 
                   src="https://picsum.photos/100/100?random=10" 
@@ -198,7 +212,7 @@ const Header: React.FC = () => {
                   className="w-10 h-10 rounded-full"
                 />
                 <div>
-                  <p className="font-medium">John Doe</p>
+                  <p className="font-medium">{user?.name || user?.email || 'User'}</p>
                   <div className="flex space-x-4 mt-2">
                     <Link 
                       to="/profile" 
@@ -209,10 +223,7 @@ const Header: React.FC = () => {
                     </Link>
                     <button 
                       className="text-sm text-gray-400 hover:text-white"
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        // Acción de logout aquí
-                      }}
+                      onClick={handleLogout}
                     >
                       Logout
                     </button>

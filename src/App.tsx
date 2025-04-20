@@ -11,6 +11,7 @@ import AdminPostFormPage from './pages/Admin/AdminPostFormPage';
 import AdminCategoriesPage from './pages/Admin/AdminCategoriesPage';
 import AdminUsersPage from './pages/Admin/AdminUsersPage';
 import AdminSettingsPage from './pages/Admin/AdminSettingsPage';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Páginas (a implementar posteriormente)
 const ReviewsPage = () => <div className="container mx-auto p-6">Reviews Page (Coming Soon)</div>;
@@ -33,8 +34,12 @@ const App: React.FC = () => {
           <Route path="contact" element={<ContactPage />} />
         </Route>
         
-        {/* Rutas de administración */}
-        <Route path="/admin" element={<AdminLayout />}>
+        {/* Rutas de administración (protegidas) */}
+        <Route path="/admin" element={
+          <ProtectedRoute requireAdmin={true}>
+            <AdminLayout />
+          </ProtectedRoute>
+        }>
           <Route index element={<AdminDashboardPage />} />
           <Route path="posts" element={<AdminPostsPage />} />
           <Route path="posts/create" element={<AdminPostFormPage />} />

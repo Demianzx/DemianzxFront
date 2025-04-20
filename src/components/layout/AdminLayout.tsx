@@ -1,10 +1,20 @@
 import React, { useState } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
+import { useAppSelector, useAppDispatch } from '../../store/hooks';
+import { logout } from '../../store/slices/authSlice';
 import AdminBreadcrumb from '../admin/AdminBreadcrumb';
 
 const AdminLayout: React.FC = () => {
   const location = useLocation();
+  const dispatch = useAppDispatch();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  const { isAuthenticated, user } = useAppSelector(state => state.auth);
+  
+  // Si el usuario no está autenticado o no es admin, redirigir al inicio
+  if (!isAuthenticated || user?.role !== 'Admin') {
+    return <Navigate to="/" replace />;
+  }
   
   const isActiveRoute = (path: string) => {
     if (path === '/admin' && location.pathname === '/admin') {
@@ -14,6 +24,10 @@ const AdminLayout: React.FC = () => {
       return true;
     }
     return false;
+  };
+
+  const handleLogout = () => {
+    dispatch(logout());
   };
 
   return (
@@ -51,7 +65,7 @@ const AdminLayout: React.FC = () => {
                 alt="Admin Avatar" 
                 className="w-8 h-8 rounded-full"
               />
-              <span className="hidden sm:inline">Admin</span>
+              <span className="hidden sm:inline">{user?.name || user?.email || 'Admin'}</span>
               <svg xmlns="http://www.w3.org/2000/svg" className="hidden sm:block h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
@@ -59,7 +73,12 @@ const AdminLayout: React.FC = () => {
             
             <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
               <Link to="/profile" className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Profile</Link>
-              <Link to="/" className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Log out</Link>
+              <button 
+                onClick={handleLogout}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+              >
+                Log out
+              </button>
             </div>
           </div>
         </div>
@@ -168,13 +187,12 @@ const AdminLayout: React.FC = () => {
           
           {/* Mobile only logout option */}
           <div className="mt-8 pt-4 border-t border-gray-800 md:hidden">
-            <Link 
-              to="/" 
-              className="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-white rounded-md"
-              onClick={() => setSidebarOpen(false)}
+            <button 
+              onClick={handleLogout}
+              className="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-white rounded-md w-full text-left"
             >
               Log out
-            </Link>
+            </button>
           </div>
         </aside>
         
