@@ -4,6 +4,7 @@ import Button from '../common/Button';
 
 interface FeaturedArticleProps {
   id: string;
+  slug?: string; 
   title: string;
   excerpt: string;
   date: string;
@@ -12,11 +13,14 @@ interface FeaturedArticleProps {
 
 const FeaturedArticle: React.FC<FeaturedArticleProps> = ({
   id,
+  slug,
   title,
   excerpt,
   date,
   imageUrl
 }) => {
+  const articleUrl = `/articles/${slug || id}`;
+  
   return (
     <div className="relative w-full h-[500px] rounded-lg overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent z-10" />
@@ -32,7 +36,7 @@ const FeaturedArticle: React.FC<FeaturedArticleProps> = ({
         <p className="text-gray-300 mb-6 max-w-2xl">
           {date} {excerpt}
         </p>
-        <Link to={`/articles/${id}`}>
+        <Link to={articleUrl}>
           <Button variant="primary" size="lg">Read More</Button>
         </Link>
       </div>

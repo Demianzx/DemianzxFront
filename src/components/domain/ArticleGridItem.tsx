@@ -4,6 +4,7 @@ import ProgressiveImage from '../common/ProgressiveImage';
 
 interface ArticleGridItemProps {
   id: string;
+  slug?: string; 
   title: string;
   date: string;
   imageUrl: string;
@@ -11,13 +12,16 @@ interface ArticleGridItemProps {
 
 const ArticleGridItem: React.FC<ArticleGridItemProps> = ({
   id,
+  slug,
   title,
   date,
   imageUrl
 }) => {
+  const articleUrl = `/articles/${slug || id}`;
+  
   return (
     <Link 
-      to={`/articles/${id}`}
+      to={articleUrl}
       className="block group overflow-hidden rounded-lg"
     >
       <div className="relative h-80 overflow-hidden">

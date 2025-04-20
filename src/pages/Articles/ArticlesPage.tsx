@@ -1,105 +1,85 @@
 import React, { useState, useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { fetchBlogPosts } from '../../store/slices/blogsSlice';
+import { fetchCategories } from '../../store/slices/categoriesSlice';
 import CategoryFilter from '../../components/domain/CategoryFilter';
 import ArticleGridItem from '../../components/domain/ArticleGridItem';
 
-// Ejemplo de datos de artículos (en una implementación real, estos vendrían de una API)
-const allArticles = [
-  {
-    id: '1',
-    title: 'Top 10 FPS Games of 2024',
-    date: 'April 24, 2024',
-    imageUrl: 'https://picsum.photos/600/400?random=1',
-    category: 'PC'
-  },
-  {
-    id: '2',
-    title: 'Exploring the World of Indie Games',
-    date: 'April 24, 2024',
-    imageUrl: 'https://picsum.photos/600/400?random=2',
-    category: 'Indie'
-  },
-  {
-    id: '3',
-    title: 'The Future of Virtual Reality Gaming',
-    date: 'April 24, 2024',
-    imageUrl: 'https://picsum.photos/600/400?random=3',
-    category: 'VR'
-  },
-  {
-    id: '4',
-    title: 'New Adventures in "CyberQuest"',
-    date: 'April 24, 2024',
-    imageUrl: 'https://picsum.photos/600/400?random=4',
-    category: 'Console'
-  },
-  {
-    id: '5',
-    title: 'The Evolution of Racing Games',
-    date: 'April 24, 2024',
-    imageUrl: 'https://picsum.photos/600/400?random=5',
-    category: 'Console'
-  },
-  {
-    id: '6',
-    title: 'Mobile Gaming: The New Frontier',
-    date: 'April 23, 2024',
-    imageUrl: 'https://picsum.photos/600/400?random=6',
-    category: 'Mobile'
-  },
-  {
-    id: '7',
-    title: 'Classic RPGs That Defined a Generation',
-    date: 'April 22, 2024',
-    imageUrl: 'https://picsum.photos/600/400?random=7',
-    category: 'PC'
-  },
-  {
-    id: '8',
-    title: 'The Art of Game Design',
-    date: 'April 21, 2024',
-    imageUrl: 'https://picsum.photos/600/400?random=8',
-    category: 'Indie'
-  },
-];
-
 const ArticlesPage: React.FC = () => {
+  const dispatch = useAppDispatch();
   const [activeCategory, setActiveCategory] = useState('All');
-  const [displayedArticles, setDisplayedArticles] = useState(allArticles);
   
-  // Categorías disponibles (en una implementación real, podrían venir de la API)
-  const categories = ['All', 'PC', 'Console', 'Mobile', 'VR'];
+  // Seleccionamos los estados relevantes del store
+  const articlesData = useAppSelector(state => state.blogs.posts);
+  const categories = useAppSelector(state => state.categories.items);
+  const isLoadingArticles = articlesData.isLoading;
+  const isLoadingCategories = useAppSelector(state => state.categories.isLoading);
   
-  // Filtrar artículos cuando cambia la categoría
+  // Cargar datos al montar el componente
   useEffect(() => {
-    if (activeCategory === 'All') {
-      setDisplayedArticles(allArticles);
+    dispatch(fetchBlogPosts({ page: 1, pageSize: 10 }));
+    dispatch(fetchCategories());
+  }, [dispatch]);
+  
+  // Filtrar artículos por categoría seleccionada
+  useEffect(() => {
+    if (activeCategory !== 'All') {
+      // Idealmente, utilizaríamos un endpoint específico para filtrar por categoría
+      // Por ahora, simplemente refrescamos todos los posts y filtramos en el cliente
+      dispatch(fetchBlogPosts({ page: 1, pageSize: 20 }));
     } else {
-      setDisplayedArticles(allArticles.filter(article => article.category === activeCategory));
+      dispatch(fetchBlogPosts({ page: 1, pageSize: 10 }));
     }
-  }, [activeCategory]);
+  }, [activeCategory, dispatch]);
+
+  // Crear un array con "All" y los nombres de las categorías
+  const categoryOptions = ['All', ...categories.map(category => category.name)];
+  
+  // Filtrar artículos por categoría activa (filtrado en el cliente)
+  const displayedArticles = activeCategory === 'All' 
+    ? articlesData.items 
+    : articlesData.items.filter(article => 
+        article.categories.some(category => category.name === activeCategory)
+      );
   
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-12">
         <h1 className="text-4xl font-bold mb-8">Articles</h1>
-        <CategoryFilter 
-          categories={categories}
-          activeCategory={activeCategory}
-          onSelectCategory={setActiveCategory}
-        />
+        
+        {isLoadingCategories ? (
+          <div className="h-10 bg-gray-800 animate-pulse rounded-md w-96"></div>
+        ) : (
+          <CategoryFilter 
+            categories={categoryOptions}
+            activeCategory={activeCategory}
+            onSelectCategory={setActiveCategory}
+          />
+        )}
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-        {displayedArticles.map(article => (
-          <ArticleGridItem
-            key={article.id}
-            id={article.id}
-            title={article.title}
-            date={article.date}
-            imageUrl={article.imageUrl}
-          />
-        ))}
-      </div>
+      {isLoadingArticles ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-80 bg-gray-800 animate-pulse rounded-lg"></div>
+          ))}
+        </div>
+      ) : displayedArticles.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+          {displayedArticles.map(article => (
+            <ArticleGridItem
+              key={article.id}
+              id={String(article.id)}
+              slug={article.slug}
+              title={article.title}
+              date={article.publishedDate ? new Date(article.publishedDate).toLocaleDateString() : 'Unknown date'}
+              imageUrl={article.featuredImageUrl || article.thumbnailImageUrl || 'https://picsum.photos/600/400'}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="text-gray-400 text-center py-10">No articles found in this category.</p>
+      )}
     </div>
   );
 };

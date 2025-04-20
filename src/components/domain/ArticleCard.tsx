@@ -4,6 +4,7 @@ import Card from '../common/Card';
 
 interface ArticleCardProps {
   id: string;
+  slug?: string; 
   title: string;
   date: string;
   category: string;
@@ -12,14 +13,17 @@ interface ArticleCardProps {
 
 const ArticleCard: React.FC<ArticleCardProps> = ({
   id,
+  slug,
   title,
   date,
   category,
   imageUrl
 }) => {
+  const articleUrl = `/articles/${slug || id}`;
+  
   return (
     <Card className="h-full">
-      <Link to={`/articles/${id}`}>
+      <Link to={articleUrl}>
         <div className="h-48 overflow-hidden">
           <img
             src={imageUrl}
