@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { register, clearAuthError, login } from '../../store/slices/authSlice';
+import { register, login, clearAuthError } from '../../store/slices/authSlice';
 
 interface RegisterFormProps {
   onClose: () => void;
@@ -12,8 +12,44 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [passwordValidation, setPasswordValidation] = useState({
+    isValid: false,
+    length: false,
+    hasUpperCase: false,
+    hasNumber: false,
+    hasSpecial: false
+  });
   
-  const { isLoading, error } = useAppSelector(state => state.auth);
+  const { isLoading, error, isAuthenticated } = useAppSelector(state => state.auth);
+  
+  // Si el usuario se autentica, cerramos el modal
+  useEffect(() => {
+    if (isAuthenticated) {
+      onClose();
+    }
+  }, [isAuthenticated, onClose]);
+  
+  // Validar la contraseña cuando cambia
+  useEffect(() => {
+    const validatePassword = () => {
+      const validations = {
+        length: password.length >= 8,
+        hasUpperCase: /[A-Z]/.test(password),
+        hasNumber: /[0-9]/.test(password),
+        hasSpecial: /[^A-Za-z0-9]/.test(password)
+      };
+      
+      const isValid = validations.length && validations.hasUpperCase && 
+                     validations.hasNumber && validations.hasSpecial;
+      
+      setPasswordValidation({
+        isValid,
+        ...validations
+      });
+    };
+    
+    validatePassword();
+  }, [password]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,31 +64,52 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
       return;
     }
     
-    // Intentar registrar al usuario
-    const registerResult = await dispatch(register({ email, password }));
+    // Validar que la contraseña cumple con los requisitos
+    if (!passwordValidation.isValid) {
+      setFormError("Password doesn't meet the requirements");
+      return;
+    }
     
-    if (register.fulfilled.match(registerResult)) {
-      // Si el registro fue exitoso, iniciar sesión automáticamente
-      const loginResult = await dispatch(login({ email, password }));
+    try {
+      // Intentar registrar al usuario
+      const registerResult = await dispatch(register({ email, password }));
       
-      if (login.fulfilled.match(loginResult)) {
-        // Cerrar el modal si la autenticación fue exitosa
-        onClose();
+      if (register.fulfilled.match(registerResult)) {
+        // Si el registro fue exitoso, iniciamos sesión
+        await dispatch(login({ email, password }));
+        // No necesitamos verificar el resultado del login porque
+        // ya tenemos el useEffect que observa isAuthenticated
       }
+    } catch (err) {
+      console.error("Registration/login process failed:", err);
+      setFormError("Registration failed. Please try again later.");
     }
   };
+  
+  // Función para formatear el mensaje de error del backend
+  const formatErrorMessage = (error: string): string => {
+    if (error.includes('DuplicateUserName')) {
+      return 'This email is already registered.';
+    }
+    // Agregamos más manejo de errores específicos aquí si es necesario
+    return error;
+  };
+  
+  // Determinar el mensaje de error a mostrar
+  const errorMessage = formError || (error ? formatErrorMessage(error) : null);
   
   return (
     <div>
       <h2 className="text-3xl font-bold text-center mb-6">Register</h2>
       
-      {(error || formError) && (
+      {errorMessage && (
         <div className="bg-red-900 text-red-200 p-3 rounded-md mb-4">
-          {formError || error}
+          {errorMessage}
         </div>
       )}
       
       <form onSubmit={handleSubmit}>
+        {/* Rest of the form remains the same */}
         <div className="mb-4">
           <label htmlFor="register-email" className="block text-gray-400 mb-2">
             Email address
@@ -81,6 +138,26 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
             required
             disabled={isLoading}
           />
+          
+          {/* Password requirements */}
+          <div className="mt-2 text-sm">
+            <div className={`flex items-center ${passwordValidation.length ? 'text-green-400' : 'text-gray-500'}`}>
+              <span className="mr-2">{passwordValidation.length ? '✓' : '○'}</span>
+              <span>At least 8 characters</span>
+            </div>
+            <div className={`flex items-center ${passwordValidation.hasUpperCase ? 'text-green-400' : 'text-gray-500'}`}>
+              <span className="mr-2">{passwordValidation.hasUpperCase ? '✓' : '○'}</span>
+              <span>At least one uppercase letter</span>
+            </div>
+            <div className={`flex items-center ${passwordValidation.hasNumber ? 'text-green-400' : 'text-gray-500'}`}>
+              <span className="mr-2">{passwordValidation.hasNumber ? '✓' : '○'}</span>
+              <span>At least one number</span>
+            </div>
+            <div className={`flex items-center ${passwordValidation.hasSpecial ? 'text-green-400' : 'text-gray-500'}`}>
+              <span className="mr-2">{passwordValidation.hasSpecial ? '✓' : '○'}</span>
+              <span>At least one special character</span>
+            </div>
+          </div>
         </div>
         
         <div className="mb-6">

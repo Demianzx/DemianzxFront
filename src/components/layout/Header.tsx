@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { logout } from '../../store/slices/authSlice';
@@ -10,6 +10,8 @@ const Header: React.FC = () => {
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   
   // Obtener el estado de autenticación y usuario de Redux
   const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
@@ -22,7 +24,26 @@ const Header: React.FC = () => {
     if (mobileMenuOpen) {
       setMobileMenuOpen(false);
     }
+    // Cerrar el menú de usuario
+    setUserMenuOpen(false);
   };
+
+  // Cerrar el menú de usuario cuando se hace clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    if (userMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [userMenuOpen]);
   
   return (
     <header className="relative flex justify-between items-center py-5 px-6 md:px-10 bg-black text-white">
@@ -93,8 +114,11 @@ const Header: React.FC = () => {
         )}
         
         {isAuthenticated ? (
-          <div className="relative group">
-            <button className="flex items-center space-x-2">
+          <div className="relative" ref={userMenuRef}>
+            <button 
+              className="flex items-center space-x-2"
+              onClick={() => setUserMenuOpen(!userMenuOpen)}
+            >
               <img 
                 src="https://picsum.photos/100/100?random=10" 
                 alt="User Avatar" 
@@ -106,18 +130,32 @@ const Header: React.FC = () => {
               </svg>
             </button>
             
-            <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
-              <Link to="/profile" className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Profile</Link>
-              {isAdmin && (
-                <Link to="/admin" className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Admin Dashboard</Link>
-              )}
-              <button 
-                onClick={handleLogout}
-                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
-              >
-                Logout
-              </button>
-            </div>
+            {userMenuOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg py-1 z-10">
+                <Link 
+                  to="/profile" 
+                  className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+                  onClick={() => setUserMenuOpen(false)}
+                >
+                  Profile
+                </Link>
+                {isAdmin && (
+                  <Link 
+                    to="/admin" 
+                    className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    Admin Dashboard
+                  </Link>
+                )}
+                <button 
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <button

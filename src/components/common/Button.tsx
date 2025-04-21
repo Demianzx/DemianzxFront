@@ -7,6 +7,7 @@ interface ButtonProps {
   className?: string;
   onClick?: () => void;
   type?: 'button' | 'submit' | 'reset';
+  disabled?: boolean; // Añadimos la propiedad disabled
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -16,6 +17,7 @@ const Button: React.FC<ButtonProps> = ({
   className = '',
   onClick,
   type = 'button',
+  disabled = false, // Valor predeterminado
   ...props
 }) => {
   const baseClasses = 'inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none';
@@ -32,13 +34,17 @@ const Button: React.FC<ButtonProps> = ({
     lg: 'text-lg px-6 py-3'
   };
   
-  const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`;
+  // Añadir clases para el estado deshabilitado
+  const disabledClasses = disabled ? 'opacity-50 cursor-not-allowed' : '';
+  
+  const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${disabledClasses} ${className}`;
   
   return (
     <button 
       className={classes} 
       onClick={onClick} 
       type={type} 
+      disabled={disabled}
       {...props}
     >
       {children}

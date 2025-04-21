@@ -78,28 +78,59 @@ export const login = createAsyncThunk(
       
       const response = await usersClient.postApiUsersLogin(false, false, loginRequest);
       
+      // Verificar que tenemos un token válido antes de procesarlo
+      if (!response.accessToken) {
+        return rejectWithValue('No access token received from server');
+      }
+      
       // Guardar tokens en localStorage
-      localStorage.setItem('token', response.accessToken || '');
+      localStorage.setItem('token', response.accessToken);
       localStorage.setItem('refreshToken', response.refreshToken || '');
       
-      // Decodificar token para obtener información del usuario
-      const decodedToken = jwtDecode<JwtPayload>(response.accessToken || '');
-      
-      return {
-        token: response.accessToken,
-        refreshToken: response.refreshToken,
-        user: {
-          id: decodedToken.sub,
-          email: decodedToken.email,
-          role: decodedToken.role,
-          name: decodedToken.name
+      try {
+        // Decodificar token para obtener información del usuario
+        const decodedToken = jwtDecode<JwtPayload>(response.accessToken);
+        
+        return {
+          token: response.accessToken,
+          refreshToken: response.refreshToken,
+          user: {
+            id: decodedToken.sub,
+            email: decodedToken.email,
+            role: decodedToken.role,
+            name: decodedToken.name
+          }
+        };
+      } catch (decodeError) {
+        console.error("Error decoding token:", decodeError);
+        
+        // Si no podemos decodificar el token, aún podemos devolver la información básica
+        return {
+          token: response.accessToken,
+          refreshToken: response.refreshToken,
+          user: {
+            id: 'unknown',
+            email: credentials.email,
+            role: undefined,
+            name: undefined
+          }
+        };
+      }
+    } catch (error: any) {
+      // Manejo detallado del error
+      if (error.response) {
+        const status = error.response.status;
+        const data = error.response.data;
+        
+        if (status === 400 && data && data.title) {
+          return rejectWithValue(data.title);
         }
-      };
-    } catch (error) {
+      }
+      
       if (error instanceof Error) {
         return rejectWithValue(error.message);
       }
-      return rejectWithValue('Unknown error occurred');
+      return rejectWithValue('Login failed. Please try again.');
     }
   }
 );
@@ -115,11 +146,45 @@ export const register = createAsyncThunk(
       await usersClient.postApiUsersRegister(registerRequest);
       
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
+      // Manejo más detallado de errores
+      if (error.response && error.response.data) {
+        // Si tenemos la respuesta del error, la devolvemos con más detalle
+        const errorData = error.response.data;
+        
+        if (errorData.errors) {
+          // Errores de validación
+          let errorMessage = "";
+          
+          if (errorData.errors.DuplicateUserName) {
+            errorMessage = errorData.errors.DuplicateUserName[0];
+          } else if (errorData.errors.PasswordRequiresNonAlphanumeric) {
+            errorMessage = "Password must contain at least one special character.";
+          } else if (errorData.errors.PasswordRequiresDigit) {
+            errorMessage = "Password must contain at least one digit.";
+          } else if (errorData.errors.PasswordRequiresUpper) {
+            errorMessage = "Password must contain at least one uppercase letter.";
+          } else {
+            // Si hay otros errores, los concatenamos
+            Object.values(errorData.errors).forEach((errorArray: any) => {
+              errorMessage += errorArray.join(', ') + ' ';
+            });
+          }
+          
+          return rejectWithValue(errorMessage.trim());
+        }
+        
+        // Si hay un mensaje de error general
+        if (errorData.title) {
+          return rejectWithValue(errorData.title);
+        }
+      }
+      
+      // Error genérico
       if (error instanceof Error) {
         return rejectWithValue(error.message);
       }
-      return rejectWithValue('Unknown error occurred');
+      return rejectWithValue('Registration failed. Please try again.');
     }
   }
 );

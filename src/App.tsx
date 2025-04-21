@@ -12,6 +12,7 @@ import AdminCategoriesPage from './pages/Admin/AdminCategoriesPage';
 import AdminUsersPage from './pages/Admin/AdminUsersPage';
 import AdminSettingsPage from './pages/Admin/AdminSettingsPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import ProfilePage from './pages/Profile/ProfilePage';
 
 // Páginas (a implementar posteriormente)
 const ReviewsPage = () => <div className="container mx-auto p-6">Reviews Page (Coming Soon)</div>;
@@ -32,6 +33,13 @@ const App: React.FC = () => {
           <Route path="reviews/:id" element={<ReviewDetailPage />} />
           <Route path="about" element={<AboutPage />} />
           <Route path="contact" element={<ContactPage />} />
+          
+          {/* Añade la ruta para el perfil con protección */}
+          <Route path="profile" element={
+            <ProtectedRoute requireAdmin={false}>
+              <ProfilePage />
+            </ProtectedRoute>
+          } />
         </Route>
         
         {/* Rutas de administración (protegidas) */}
@@ -40,13 +48,7 @@ const App: React.FC = () => {
             <AdminLayout />
           </ProtectedRoute>
         }>
-          <Route index element={<AdminDashboardPage />} />
-          <Route path="posts" element={<AdminPostsPage />} />
-          <Route path="posts/create" element={<AdminPostFormPage />} />
-          <Route path="posts/edit/:id" element={<AdminPostFormPage />} />
-          <Route path="categories" element={<AdminCategoriesPage />} />
-          <Route path="users" element={<AdminUsersPage />} />
-          <Route path="settings" element={<AdminSettingsPage />} />
+          {/* ... rutas de administración ... */}
         </Route>
       </Routes>
     </BrowserRouter>
