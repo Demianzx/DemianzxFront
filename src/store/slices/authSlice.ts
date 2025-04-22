@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { UsersClient, LoginRequest, RegisterRequest, RefreshRequest  } from '../../services/api/web-api-client';
+import { UsersClient, LoginRequest, RegisterRequest, RefreshRequest, RegisterUserCommand  } from '../../services/api/web-api-client';
 import apiClient from '../../services/api/apiClient';
 import { jwtDecode } from 'jwt-decode';
 
@@ -189,6 +189,55 @@ export const register = createAsyncThunk(
   }
 );
 
+export const registerUser = createAsyncThunk(
+  'auth/registerUser',
+  async (userData: { userName: string; email: string; password: string }, { rejectWithValue }) => {
+    try {
+      const registerUserCommand = new RegisterUserCommand();
+      registerUserCommand.userName = userData.userName;
+      registerUserCommand.email = userData.email;
+      registerUserCommand.password = userData.password;
+      
+      await usersClient.registerUser(registerUserCommand);
+      
+      return { success: true };
+    } catch (error: any) {
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+        
+        if (errorData.errors) {
+          let errorMessage = "";
+          
+          if (errorData.errors.DuplicateUserName) {
+            errorMessage = errorData.errors.DuplicateUserName[0];
+          } else if (errorData.errors.PasswordRequiresNonAlphanumeric) {
+            errorMessage = "Password must contain at least one special character.";
+          } else if (errorData.errors.PasswordRequiresDigit) {
+            errorMessage = "Password must contain at least one digit.";
+          } else if (errorData.errors.PasswordRequiresUpper) {
+            errorMessage = "Password must contain at least one uppercase letter.";
+          } else {
+            Object.values(errorData.errors).forEach((errorArray: any) => {
+              errorMessage += errorArray.join(', ') + ' ';
+            });
+          }
+          
+          return rejectWithValue(errorMessage.trim());
+        }
+        
+        if (errorData.title) {
+          return rejectWithValue(errorData.title);
+        }
+      }
+      
+      if (error instanceof Error) {
+        return rejectWithValue(error.message);
+      }
+      return rejectWithValue('Registration failed. Please try again.');
+    }
+  }
+);
+
 export const refreshAccessToken = createAsyncThunk(
     'auth/refreshToken',
     async (_, { getState, rejectWithValue }) => {
@@ -285,6 +334,18 @@ const authSlice = createSlice({
         // No cambiamos el estado de autenticación, ya que el usuario aún debe iniciar sesión
       })
       .addCase(register.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string || 'Registration failed';
+      })
+      .addCase(registerUser.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(registerUser.fulfilled, (state) => {
+        state.isLoading = false;
+        // No cambiamos el estado de autenticación, ya que el usuario aún debe iniciar sesión
+      })
+      .addCase(registerUser.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string || 'Registration failed';
       })

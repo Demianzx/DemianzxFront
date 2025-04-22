@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { register, login, clearAuthError } from '../../store/slices/authSlice';
+import { registerUser, login, clearAuthError } from '../../store/slices/authSlice';
 
 interface RegisterFormProps {
   onClose: () => void;
@@ -8,6 +8,7 @@ interface RegisterFormProps {
 
 const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
   const dispatch = useAppDispatch();
+  const [userName, setUserName] = useState('');  // Nuevo estado para userName
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -40,7 +41,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
       };
       
       const isValid = validations.length && validations.hasUpperCase && 
-                     validations.hasNumber && validations.hasSpecial;
+                    validations.hasNumber && validations.hasSpecial;
       
       setPasswordValidation({
         isValid,
@@ -71,10 +72,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
     }
     
     try {
-      // Intentar registrar al usuario
-      const registerResult = await dispatch(register({ email, password }));
+      // Usar el nuevo thunk registerUser
+      const registerResult = await dispatch(registerUser({ userName, email, password }));
       
-      if (register.fulfilled.match(registerResult)) {
+      if (registerUser.fulfilled.match(registerResult)) {
         // Si el registro fue exitoso, iniciamos sesión
         await dispatch(login({ email, password }));
         // No necesitamos verificar el resultado del login porque
@@ -89,7 +90,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
   // Función para formatear el mensaje de error del backend
   const formatErrorMessage = (error: string): string => {
     if (error.includes('DuplicateUserName')) {
-      return 'This email is already registered.';
+      return 'This email or username is already registered.';
     }
     // Agregamos más manejo de errores específicos aquí si es necesario
     return error;
@@ -109,7 +110,22 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
       )}
       
       <form onSubmit={handleSubmit}>
-        {/* Rest of the form remains the same */}
+        {/* Nuevo campo para el nombre de usuario */}
+        <div className="mb-4">
+          <label htmlFor="register-username" className="block text-gray-400 mb-2">
+            Username
+          </label>
+          <input
+            id="register-username"
+            type="text"
+            value={userName}
+            onChange={(e) => setUserName(e.target.value)}
+            className="w-full bg-gray-800 border border-gray-700 rounded-md py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-600"
+            required
+            disabled={isLoading}
+          />
+        </div>
+        
         <div className="mb-4">
           <label htmlFor="register-email" className="block text-gray-400 mb-2">
             Email address
