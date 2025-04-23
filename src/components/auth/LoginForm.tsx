@@ -41,11 +41,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onClose }) => {
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
           <label htmlFor="email" className="block text-gray-400 mb-2">
-            Email address
+            User
           </label>
           <input
             id="email"
-            type="email"
+            type="text"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full bg-gray-800 border border-gray-700 rounded-md py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-600"

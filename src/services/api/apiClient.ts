@@ -31,7 +31,7 @@ apiClient.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       // Redirigir al login si hay problemas de autenticación
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      localStorage.removeItem('refreshToken');
     }
     return Promise.reject(error);
   }

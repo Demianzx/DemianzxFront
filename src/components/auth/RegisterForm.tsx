@@ -1,3 +1,4 @@
+// src/components/auth/RegisterForm.tsx
 import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { registerUser, login, clearAuthError } from '../../store/slices/authSlice';
@@ -8,10 +9,10 @@ interface RegisterFormProps {
 
 const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
   const dispatch = useAppDispatch();
-  const [userName, setUserName] = useState('');  // Nuevo estado para userName
+  const [userName, setUserName] = useState('');  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // Nuevo estado para mostrar/ocultar contraseña
   const [formError, setFormError] = useState<string | null>(null);
   const [passwordValidation, setPasswordValidation] = useState({
     isValid: false,
@@ -59,27 +60,24 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
     setFormError(null);
     dispatch(clearAuthError());
     
-    // Validar que las contraseñas coincidan
-    if (password !== confirmPassword) {
-      setFormError("Passwords don't match");
-      return;
-    }
-    
     // Validar que la contraseña cumple con los requisitos
     if (!passwordValidation.isValid) {
       setFormError("Password doesn't meet the requirements");
       return;
     }
+    console.log('Registro con los siguientes datos:', {
+      userName,
+      email,
+      password 
+    });
     
     try {
-      // Usar el nuevo thunk registerUser
+      // Usar el thunk registerUser
       const registerResult = await dispatch(registerUser({ userName, email, password }));
       
       if (registerUser.fulfilled.match(registerResult)) {
         // Si el registro fue exitoso, iniciamos sesión
         await dispatch(login({ email, password }));
-        // No necesitamos verificar el resultado del login porque
-        // ya tenemos el useEffect que observa isAuthenticated
       }
     } catch (err) {
       console.error("Registration/login process failed:", err);
@@ -99,6 +97,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
   // Determinar el mensaje de error a mostrar
   const errorMessage = formError || (error ? formatErrorMessage(error) : null);
   
+  // Función para alternar la visibilidad de la contraseña
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+  
   return (
     <div>
       <h2 className="text-3xl font-bold text-center mb-6">Register</h2>
@@ -109,8 +112,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
         </div>
       )}
       
-      <form onSubmit={handleSubmit}>
-        {/* Nuevo campo para el nombre de usuario */}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Campo de nombre de usuario */}
         <div className="mb-4">
           <label htmlFor="register-username" className="block text-gray-400 mb-2">
             Username
@@ -126,6 +129,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
           />
         </div>
         
+        {/* Campo de email */}
         <div className="mb-4">
           <label htmlFor="register-email" className="block text-gray-400 mb-2">
             Email address
@@ -141,21 +145,43 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
           />
         </div>
         
+        {/* Campo de contraseña con botón de mostrar/ocultar */}
         <div className="mb-4">
           <label htmlFor="register-password" className="block text-gray-400 mb-2">
             Password
           </label>
-          <input
-            id="register-password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-700 rounded-md py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-600"
-            required
-            disabled={isLoading}
-          />
+          <div className="relative">
+            <input
+              id="register-password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-md py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-600"
+              required
+              disabled={isLoading}
+            />
+            <button
+              type="button"
+              onClick={togglePasswordVisibility}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white"
+            >
+              {showPassword ? (
+                // Icono de ojo abierto (contraseña visible)
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                // Icono de ojo cerrado (contraseña oculta)
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
+                  <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
+                </svg>
+              )}
+            </button>
+          </div>
           
-          {/* Password requirements */}
+          {/* Requisitos de la contraseña */}
           <div className="mt-2 text-sm">
             <div className={`flex items-center ${passwordValidation.length ? 'text-green-400' : 'text-gray-500'}`}>
               <span className="mr-2">{passwordValidation.length ? '✓' : '○'}</span>
@@ -174,21 +200,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onClose }) => {
               <span>At least one special character</span>
             </div>
           </div>
-        </div>
-        
-        <div className="mb-6">
-          <label htmlFor="register-confirm-password" className="block text-gray-400 mb-2">
-            Confirm Password
-          </label>
-          <input
-            id="register-confirm-password"
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-700 rounded-md py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-600"
-            required
-            disabled={isLoading}
-          />
         </div>
         
         <button
