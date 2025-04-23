@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { UsersClient, LoginRequest, RegisterRequest, RefreshRequest, RegisterUserCommand  } from '../../services/api/web-api-client';
+import { UsersClient, LoginUserCommand, RegisterUserCommand } from '../../services/api/web-api-client';
 import apiClient from '../../services/api/apiClient';
 import { jwtDecode } from 'jwt-decode';
 
@@ -21,7 +21,6 @@ interface AuthState {
   } | null;
   isAuthenticated: boolean;
   token: string | null;
-  refreshToken: string | null;
   isLoading: boolean;
   error: string | null;
 }
@@ -31,7 +30,6 @@ const initialState: AuthState = {
   user: null,
   isAuthenticated: false,
   token: localStorage.getItem('token'),
-  refreshToken: localStorage.getItem('refreshToken'),
   isLoading: false,
   error: null
 };
@@ -52,16 +50,12 @@ if (initialState.token) {
     } else {
       // Si el token ha expirado, limpiamos el localStorage
       localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
       initialState.token = null;
-      initialState.refreshToken = null;
     }
   } catch (e) {
     // Si hay algún error al decodificar el token, limpiamos el localStorage
     localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
     initialState.token = null;
-    initialState.refreshToken = null;
   }
 }
 
@@ -72,47 +66,44 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials: { email: string; password: string }, { rejectWithValue }) => {
     try {
-      const loginRequest = new LoginRequest();
-      loginRequest.email = credentials.email;
-      loginRequest.password = credentials.password;
+      const loginCommand = new LoginUserCommand();
+      loginCommand.userName = credentials.email;
+      loginCommand.password = credentials.password;
       
-      const response = await usersClient.postApiUsersLogin(false, false, loginRequest);
+      const response = await usersClient.loginUser(loginCommand);
       
       // Verificar que tenemos un token válido antes de procesarlo
-      if (!response.accessToken) {
+      if (!response.token) {
         return rejectWithValue('No access token received from server');
       }
       
-      // Guardar tokens en localStorage
-      localStorage.setItem('token', response.accessToken);
-      localStorage.setItem('refreshToken', response.refreshToken || '');
+      // Guardar token en localStorage
+      localStorage.setItem('token', response.token);
       
       try {
         // Decodificar token para obtener información del usuario
-        const decodedToken = jwtDecode<JwtPayload>(response.accessToken);
+        const decodedToken = jwtDecode<JwtPayload>(response.token);
         
         return {
-          token: response.accessToken,
-          refreshToken: response.refreshToken,
+          token: response.token,
           user: {
             id: decodedToken.sub,
-            email: decodedToken.email,
-            role: decodedToken.role,
-            name: decodedToken.name
+            email: decodedToken.email || credentials.email, 
+            role: decodedToken.role || response.roles?.[0],
+            name: decodedToken.name || response.userName
           }
         };
       } catch (decodeError) {
         console.error("Error decoding token:", decodeError);
         
-        // Si no podemos decodificar el token, aún podemos devolver la información básica
+        // Si no podemos decodificar el token, usamos los datos de la respuesta
         return {
-          token: response.accessToken,
-          refreshToken: response.refreshToken,
+          token: response.token,
           user: {
             id: 'unknown',
-            email: credentials.email,
-            role: undefined,
-            name: undefined
+            email: credentials.email, // Usar email del login para garantizar string
+            role: response.roles?.[0],
+            name: response.userName || undefined
           }
         };
       }
@@ -125,66 +116,16 @@ export const login = createAsyncThunk(
         if (status === 400 && data && data.title) {
           return rejectWithValue(data.title);
         }
+        
+        if (data && data.errors && Array.isArray(data.errors)) {
+          return rejectWithValue(data.errors.join(', '));
+        }
       }
       
       if (error instanceof Error) {
         return rejectWithValue(error.message);
       }
       return rejectWithValue('Login failed. Please try again.');
-    }
-  }
-);
-
-export const register = createAsyncThunk(
-  'auth/register',
-  async (userData: { email: string; password: string }, { rejectWithValue }) => {
-    try {
-      const registerRequest = new RegisterRequest();
-      registerRequest.email = userData.email;
-      registerRequest.password = userData.password;
-      
-      await usersClient.postApiUsersRegister(registerRequest);
-      
-      return { success: true };
-    } catch (error: any) {
-      // Manejo más detallado de errores
-      if (error.response && error.response.data) {
-        // Si tenemos la respuesta del error, la devolvemos con más detalle
-        const errorData = error.response.data;
-        
-        if (errorData.errors) {
-          // Errores de validación
-          let errorMessage = "";
-          
-          if (errorData.errors.DuplicateUserName) {
-            errorMessage = errorData.errors.DuplicateUserName[0];
-          } else if (errorData.errors.PasswordRequiresNonAlphanumeric) {
-            errorMessage = "Password must contain at least one special character.";
-          } else if (errorData.errors.PasswordRequiresDigit) {
-            errorMessage = "Password must contain at least one digit.";
-          } else if (errorData.errors.PasswordRequiresUpper) {
-            errorMessage = "Password must contain at least one uppercase letter.";
-          } else {
-            // Si hay otros errores, los concatenamos
-            Object.values(errorData.errors).forEach((errorArray: any) => {
-              errorMessage += errorArray.join(', ') + ' ';
-            });
-          }
-          
-          return rejectWithValue(errorMessage.trim());
-        }
-        
-        // Si hay un mensaje de error general
-        if (errorData.title) {
-          return rejectWithValue(errorData.title);
-        }
-      }
-      
-      // Error genérico
-      if (error instanceof Error) {
-        return rejectWithValue(error.message);
-      }
-      return rejectWithValue('Registration failed. Please try again.');
     }
   }
 );
@@ -208,21 +149,19 @@ export const registerUser = createAsyncThunk(
         if (errorData.errors) {
           let errorMessage = "";
           
-          if (errorData.errors.DuplicateUserName) {
-            errorMessage = errorData.errors.DuplicateUserName[0];
-          } else if (errorData.errors.PasswordRequiresNonAlphanumeric) {
-            errorMessage = "Password must contain at least one special character.";
-          } else if (errorData.errors.PasswordRequiresDigit) {
-            errorMessage = "Password must contain at least one digit.";
-          } else if (errorData.errors.PasswordRequiresUpper) {
-            errorMessage = "Password must contain at least one uppercase letter.";
-          } else {
-            Object.values(errorData.errors).forEach((errorArray: any) => {
-              errorMessage += errorArray.join(', ') + ' ';
+          if (typeof errorData.errors === 'object') {
+            Object.entries(errorData.errors).forEach(([key, value]: [string, any]) => {
+              if (Array.isArray(value)) {
+                errorMessage += `${value.join(', ')} `;
+              } else {
+                errorMessage += `${value} `;
+              }
             });
+          } else if (Array.isArray(errorData.errors)) {
+            errorMessage = errorData.errors.join(', ');
           }
           
-          return rejectWithValue(errorMessage.trim());
+          return rejectWithValue(errorMessage.trim() || 'Registration failed');
         }
         
         if (errorData.title) {
@@ -238,67 +177,17 @@ export const registerUser = createAsyncThunk(
   }
 );
 
-export const refreshAccessToken = createAsyncThunk(
-    'auth/refreshToken',
-    async (_, { getState, rejectWithValue }) => {
-      try {
-        const state = getState() as { auth: AuthState };
-        const refreshToken = state.auth.refreshToken;
-        
-        if (!refreshToken) {
-          return rejectWithValue('No refresh token available');
-        }
-        
-        // Crear una instancia adecuada de RefreshRequest
-        const refreshRequest = RefreshRequest.fromJS({
-          refreshToken: refreshToken
-        });
-        
-        const response = await usersClient.postApiUsersRefresh(refreshRequest);
-        
-        // Guardar nuevos tokens en localStorage
-        localStorage.setItem('token', response.accessToken || '');
-        localStorage.setItem('refreshToken', response.refreshToken || '');
-        
-        // Decodificar token para obtener información del usuario
-        const decodedToken = jwtDecode<JwtPayload>(response.accessToken || '');
-        
-        return {
-          token: response.accessToken,
-          refreshToken: response.refreshToken,
-          user: {
-            id: decodedToken.sub,
-            email: decodedToken.email,
-            role: decodedToken.role,
-            name: decodedToken.name
-          }
-        };
-      } catch (error) {
-        // Limpiar tokens si falla la actualización
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        
-        if (error instanceof Error) {
-          return rejectWithValue(error.message);
-        }
-        return rejectWithValue('Unknown error occurred');
-      }
-    }
-  );
-
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
     logout: (state) => {
-      // Eliminar tokens del localStorage
+      // Eliminar token del localStorage
       localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
       
       // Restablecer el estado
       state.user = null;
       state.token = null;
-      state.refreshToken = null;
       state.isAuthenticated = false;
     },
     clearAuthError: (state) => {
@@ -315,7 +204,6 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.isLoading = false;
         state.token = action.payload.token || null;
-        state.refreshToken = action.payload.refreshToken || null;
         state.user = action.payload.user;
         state.isAuthenticated = true;
       })
@@ -324,19 +212,7 @@ const authSlice = createSlice({
         state.error = action.payload as string || 'Login failed';
       })
 
-    // Manejar register
-      .addCase(register.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(register.fulfilled, (state) => {
-        state.isLoading = false;
-        // No cambiamos el estado de autenticación, ya que el usuario aún debe iniciar sesión
-      })
-      .addCase(register.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string || 'Registration failed';
-      })
+    // Manejar registerUser
       .addCase(registerUser.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -348,27 +224,6 @@ const authSlice = createSlice({
       .addCase(registerUser.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string || 'Registration failed';
-      })
-
-    // Manejar refreshToken
-      .addCase(refreshAccessToken.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(refreshAccessToken.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.token = action.payload.token || null;
-        state.refreshToken = action.payload.refreshToken || null;
-        state.user = action.payload.user;
-        state.isAuthenticated = true;
-      })
-      .addCase(refreshAccessToken.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string || 'Token refresh failed';
-        state.user = null;
-        state.token = null;
-        state.refreshToken = null;
-        state.isAuthenticated = false;
       });
   }
 });
